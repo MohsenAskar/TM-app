@@ -30,7 +30,6 @@ from docx import Document
 from concurrent.futures import ThreadPoolExecutor
 import time
 import base64
-import os
 
 # Download necessary NLTK resources if not downloaded
 def download_nltk_resources():
