@@ -1,4 +1,4 @@
-# Streamlit and Visualization Imports
+# Imports
 import streamlit as st
 import plotly.express as px
 from wordcloud import WordCloud
@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import pyLDAvis
 import pyLDAvis.gensim
 from plotly.colors import qualitative
-
-# Text Processing and NLP Imports
 import re
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -19,15 +17,11 @@ from gensim.corpora import Dictionary
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import PCA
 import spacy
-
-# Clustering and Dimensionality Reduction Imports
 from sklearn.manifold import TSNE
 from sklearn.cluster import AgglomerativeClustering, DBSCAN
 from scipy.cluster.hierarchy import dendrogram
 import numpy as np
 import pandas as pd
-
-# Utilities
 from collections import Counter
 import networkx as nx
 import itertools
@@ -40,19 +34,14 @@ import os
 
 # Download necessary NLTK resources if not downloaded
 def download_nltk_resources():
-    # Check and download 'punkt' if not available
     try:
         find(r'tokenizers/punkt')
     except LookupError:
         nltk.download('punkt', quiet=True)
-    
-    # Check and download 'stopwords' if not available
     try:
         _ = stopwords.words('english')
     except LookupError:
         nltk.download('stopwords', quiet=True)
-
-# Call this function once at the start of your program
 download_nltk_resources()
 
 # Load SpaCy models with lazy loading
@@ -71,8 +60,8 @@ def read_docx(file):
 # Text preprocessing
 @st.cache_data
 def preprocess_text(text, language='english'):
-    text = re.sub(r'\S*@\S*\s?', '', text)  # Remove emails
-    nlp = load_spacy_model(language)  # Lazy load the model
+    text = re.sub(r'\S*@\S*\s?', '', text)  
+    nlp = load_spacy_model(language) 
     doc = nlp(text)
     tokens = [
         token.lemma_ for token in doc
@@ -240,28 +229,18 @@ def plot_topics(hdp_topics, title="Topic probabilities"):
 
 # Perform DBSCAN Clustering
 def perform_dbscan_clustering(docs, language):
-    # Vectorize the documents
     vectorizer = TfidfVectorizer(tokenizer=lambda x: preprocess_text(x, language), lowercase=False)
     X = vectorizer.fit_transform(docs)
-
-    # Perform DBSCAN clustering
     dbscan = DBSCAN(eps=0.5, min_samples=2)
     clusters = dbscan.fit_predict(X.toarray())
-
-    # Perform PCA for dimensionality reduction
     pca = PCA(n_components=2)
     result = pca.fit_transform(X.toarray())
-
-    # Identify unique clusters (including noise as a separate cluster)
     unique_clusters = np.unique(clusters)
 
     # Choose a Plotly qualitative color scale
-    color_scale = px.colors.qualitative.Vivid  # Choose from Plotly's qualitative scales
-
-    # Create a color list that maps to each unique cluster
+    color_scale = px.colors.qualitative.Vivid
     color_list = {str(cluster): color_scale[i % len(color_scale)] for i, cluster in enumerate(unique_clusters)}
 
-    # Create a plotly scatter plot with color mapping
     fig = px.scatter(
         x=result[:, 0],
         y=result[:, 1],
@@ -271,12 +250,9 @@ def perform_dbscan_clustering(docs, language):
         title='DBSCAN Clustering',
         hover_data={'Document': docs}
     )
-
-    # Update plot layout
+    
     fig.update_traces(marker=dict(size=8, opacity=0.6), selector=dict(mode='markers'))
     fig.update_layout(height=600, width=800)
-
-    # Display the plot in Streamlit
     st.plotly_chart(fig)
 
 # Show WordCloud
@@ -351,12 +327,8 @@ def image_to_base64(image_path):
 
 # Main Function
 def main():
-    # Load your image from a local path
-    image_path = (r"C:\Users\mas082\OneDrive - UiT Office 365\Desktop\Introduce_Your_Self\cartoon.JPG")
-    # Get the base64 string of the image
+    image_path = (r"cartoon.JPG")
     image_base64 = image_to_base64(image_path)
-
-    # Display your image and name in the top right corner
     st.markdown(
         f"""
         <style>
@@ -444,67 +416,41 @@ def main():
     # Language selection dropdown
     language = st.selectbox("Select Language", ["norwegian", "english"], help="Choose the language of your text")
 
-    # File uploader for .txt and .docx files
+    # File uploader
     uploaded_files = st.file_uploader("Upload text files", type=["txt", "docx"], accept_multiple_files=True, help= "You can upload one or many files at once")
 
     docs = []
 
-    # Process each uploaded file
     if uploaded_files:
         for uploaded_file in uploaded_files:
-            # Determine the file type and read accordingly
             if uploaded_file.name.endswith('.txt'):
-                # Read the text file
                 text = uploaded_file.read().decode("utf-8")
             elif uploaded_file.name.endswith('.docx'):
-                # Read the .docx file
                 text = read_docx(uploaded_file)
             else:
                 st.error(f"Unsupported file format: {uploaded_file.name}")
                 continue
-
-            # Split the text by newlines and append it to the docs list
             docs.extend(text.split('\n'))
-
-            # Filter out any empty strings from docs
             docs = [doc for doc in docs if doc.strip() != '']
 
-            if docs:  # Proceed only if there are non-empty documents
-                # Display a temporary message
+            if docs:
                 message_placeholder = st.empty()
                 message_placeholder.info(f"Cleaning text from file {uploaded_file.name}, please wait...")
-                
-                # Clean each document using the clean_text function
                 cleaned_docs = [clean_text(doc, language) for doc in docs]
-
-                # Update the message to indicate completion
                 message_placeholder.success(f"Cleaning text from file {uploaded_file.name} completed!")
-                
-                # Wait for a few seconds and then clear the message
-                time.sleep(3)
+                time.sleep(1)
                 message_placeholder.empty()
 
     else:
-        # Text area for manual text input
         text = st.text_area("Or paste the text here")
-        # Split the text into documents
         docs = text.split('\n')
-
-        # Filter out any empty strings from docs
         docs = [doc for doc in docs if doc.strip() != '']
 
-        if docs:  # Proceed only if there are non-empty documents
-            # Display a temporary message
+        if docs:  
             message_placeholder = st.empty()
             message_placeholder.info("Cleaning text, please wait...")
-
-            # Clean each document using the clean_text function
             cleaned_docs = [clean_text(doc, language) for doc in docs]
-
-            # Update the message to indicate completion
             message_placeholder.success("Cleaning text is completed!")
-
-            # Wait for a few seconds and then clear the message
             time.sleep(1)
             message_placeholder.empty()
                        
